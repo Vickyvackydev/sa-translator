@@ -256,8 +256,8 @@ const TranslationApp: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const user: UserProfile = {
-    name: "Benedict Omosa",
-    email: "benedict@example.com",
+    name: "Translator User",
+    email: "translator@example.com",
   };
 
   const scrollToBottom = (): void => {
