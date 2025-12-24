@@ -371,7 +371,14 @@ const TranslationApp: React.FC = () => {
               id: msg.id,
               text: msg.content,
               isUser: msg.sender === "user",
-              detectedLang: msg.sender === "user" ? "EN" : "ZU", // Defaulting to EN/ZU for history if not provided
+              // detectedLang:
+              //   msg.sender === "user"
+              //     ? chatId === chat.id
+              //       ? sourceLanguage.toUpperCase()
+              //       : "EN"
+              //     : chatId === chat.id
+              //     ? targetLanguage.toUpperCase()
+              //     : "ZU",
             })),
           })
         );
