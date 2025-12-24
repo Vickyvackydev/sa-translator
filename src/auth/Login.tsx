@@ -1,6 +1,10 @@
 import { Eye, EyeOff, Globe, Lock, Mail } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { login } from "../services/auth.service";
+import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { setToken, setUser } from "../state/slices/authReducer";
 
 interface LoginFormData {
   email: string;
@@ -15,17 +19,31 @@ export default function LoginScreen() {
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Login:", formData);
+
+    const payload = {
+      email: formData.email,
+      password: formData.password,
+    };
+    try {
+      const response = await login(payload);
+      if (response) {
+        toast.success(response.message);
+        dispatch(setToken(response.data.token));
+        dispatch(setUser(response.data));
+        navigate("/");
+      }
+    } catch (error: any) {
+      toast.error(error.response.data.message);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
-  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-amber-50 p-4">
       <div className="w-full max-w-md">

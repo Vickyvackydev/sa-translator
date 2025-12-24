@@ -3,15 +3,30 @@ import MainPage from "./layout";
 import LoginScreen from "./auth/Login";
 import RegisterScreen from "./auth/Register";
 import ForgotPasswordScreen from "./auth/ForgotPassword";
+import VerifyTokenScreen from "./auth/VerifyToken";
+import PrivateRoute from "./Private";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<MainPage />} />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/register" element={<RegisterScreen />} />
-      <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
-    </Routes>
+    <>
+      <Toaster position="top-left" />
+
+      <Routes>
+        <Route
+          path="/chat?/:id?"
+          element={
+            <PrivateRoute>
+              <MainPage />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/register" element={<RegisterScreen />} />
+        <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+        <Route path="/verify-token" element={<VerifyTokenScreen />} />
+      </Routes>
+    </>
   );
 }
 

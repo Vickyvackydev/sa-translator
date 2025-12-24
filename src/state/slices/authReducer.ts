@@ -10,6 +10,8 @@ export interface AuthenticationState {
   refreshToken?: string;
   role: string | null;
   globalLoading: boolean;
+  authType: "REGISTER" | "PASSWORD_RESET" | "EMAIL_RESET";
+  storedEmail: string;
 }
 
 const initialState: AuthenticationState = {
@@ -18,6 +20,8 @@ const initialState: AuthenticationState = {
   refreshToken: "",
   role: "",
   globalLoading: false,
+  authType: "REGISTER",
+  storedEmail: "",
 };
 
 export const AuthSlice = createSlice({
@@ -39,9 +43,23 @@ export const AuthSlice = createSlice({
     setGlobalLoading: (state, action: PayloadAction<boolean>) => {
       state.globalLoading = action.payload;
     },
+    setAuthType: (
+      state,
+      action: PayloadAction<"REGISTER" | "PASSWORD_RESET" | "EMAIL_RESET">
+    ) => {
+      state.authType = action.payload;
+    },
     reset: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = "";
+      state.role = "";
+      state.globalLoading = false;
+      state.authType = "REGISTER";
+      state.storedEmail = "";
+    },
+    setStoredEmail: (state, action: PayloadAction<string>) => {
+      state.storedEmail = action.payload;
     },
   },
 });
@@ -53,6 +71,8 @@ export const {
   setRefreshToken,
   setRole,
   setGlobalLoading,
+  setAuthType,
+  setStoredEmail,
 } = AuthSlice.actions;
 
 export const selectUser = (state: RootState) => state.auths.user;
@@ -61,4 +81,6 @@ export const selectRefreshToken = (state: RootState) =>
   state.auths.refreshToken;
 export const selectRole = (state: RootState) => state.auths.role;
 export const globalLoading = (state: RootState) => state.auths.globalLoading;
+export const authType = (state: RootState) => state.auths.authType;
+export const storedEmail = (state: RootState) => state.auths.storedEmail;
 export const authReducer = AuthSlice.reducer;

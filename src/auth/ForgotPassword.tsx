@@ -1,6 +1,10 @@
 import { ArrowLeft, Globe, Mail } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { forgotPassword } from "../services/auth.service";
+import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { setAuthType } from "../state/slices/authReducer";
 
 interface ForgotPasswordFormData {
   email: string;
@@ -11,16 +15,25 @@ export default function ForgotPasswordScreen() {
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Forgot password:", formData);
+
+    try {
+      const response = await forgotPassword(formData.email);
+      if (response) {
+        toast.success(response.message);
+        dispatch(setAuthType("PASSWORD_RESET"));
+        navigate("/verify-token");
+      }
+    } catch (error: any) {
+      console.error("Error forgot password:", error);
+      toast.error(error?.response?.data?.message);
+    } finally {
       setIsLoading(false);
-      navigate("/");
-    }, 1500);
+    }
   };
 
   return (

@@ -12,6 +12,9 @@ body {
 .screen {
   max-width: 1280px;
 }
+button {
+  cursor: pointer;
+}
 
 ::-webkit-scrollbar {
   width: 0;

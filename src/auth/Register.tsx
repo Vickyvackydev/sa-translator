@@ -2,6 +2,12 @@
 import React, { useState } from "react";
 import { Globe, Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { register } from "../services/auth.service";
+import toast from "react-hot-toast";
+import { setAuthType } from "../state/slices/authReducer";
+import { useDispatch } from "react-redux";
+// import { useDispatch } from "react-redux";
+// import { setToken } from "../state/slices/authReducer";
 
 // Types
 
@@ -24,6 +30,7 @@ export default function RegisterScreen() {
     useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -32,11 +39,27 @@ export default function RegisterScreen() {
       return;
     }
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Register:", formData);
+
+    const payload = {
+      username: formData.name,
+      first_name: formData.name.split(" ")[0],
+      last_name: formData.name.split(" ")[1],
+      email: formData.email,
+      password: formData.password,
+      password_confirmation: formData.confirmPassword,
+    };
+    try {
+      const response = await register(payload);
+      if (response) {
+        dispatch(setAuthType("REGISTER"));
+        toast.success(response.message);
+        navigate("/verify-token");
+      }
+    } catch (error: any) {
+      console.error("Error registering:", error);
+      toast.error(error?.response?.data?.message);
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
