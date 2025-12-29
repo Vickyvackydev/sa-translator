@@ -7,11 +7,24 @@ import {
   User,
   Settings,
   MessageSquare,
+  Trash2,
+  X,
+  MoreVertical,
+  Shield,
+  Key as KeyIcon,
+  Monitor as Computer,
+  Save,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { reset, selectUser } from "../state/slices/authReducer";
-import { sendChat, getChats } from "../services/chat.service";
+import { reset, selectUser, setUser } from "../state/slices/authReducer";
+import { sendChat, getChats, deleteChat } from "../services/chat.service";
+import {
+  updateProfile,
+  updatePassword as updatePasswordService,
+  getSessions,
+  deleteSession,
+} from "../services/auth.service";
 import toast from "react-hot-toast";
 
 // Types
@@ -59,6 +72,8 @@ interface SidebarProps {
   history: ChatHistoryItem[];
   onSelectChat: (chat: ChatHistoryItem) => void;
   currentChatId: string | null;
+  onDeleteChat: (e: React.MouseEvent, id: string) => void;
+  onOpenSettings: () => void;
 }
 
 // Message Component
@@ -110,6 +125,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   setTargetLanguage,
 }) => {
   const languages: Language[] = [
+    { code: "", name: "Auto" },
     { code: "en", name: "English" },
     { code: "zu", name: "isiZulu" },
     { code: "xh", name: "isiXhosa" },
@@ -173,7 +189,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         }
         className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        {languages.map((lang: Language) => (
+        {languages.slice(1).map((lang: Language) => (
           <option key={lang.code} value={lang.code}>
             {lang.name}
           </option>
@@ -192,6 +208,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   history,
   onSelectChat,
   currentChatId,
+  onDeleteChat,
+  onOpenSettings,
 }) => {
   const groupHistory = () => {
     const groups: { [key: string]: ChatHistoryItem[] } = {
@@ -223,6 +241,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const historyGroups = groupHistory();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    if (openMenuId) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [openMenuId]);
 
   return (
     <>
@@ -272,28 +300,66 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </h3>
                 <div className="space-y-1">
                   {items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onSelectChat(item);
-                        onClose();
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate flex items-center gap-2 ${
-                        currentChatId === item.id
-                          ? "bg-gray-800 text-white font-medium shadow-sm"
-                          : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
-                      }`}
-                    >
-                      <MessageSquare
-                        size={14}
-                        className={
+                    <div key={item.id} className="relative group">
+                      <button
+                        onClick={() => {
+                          onSelectChat(item);
+                          onClose();
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate flex items-center justify-between ${
                           currentChatId === item.id
-                            ? "text-blue-400"
-                            : "text-gray-600"
-                        }
-                      />
-                      <span className="truncate">{item.title}</span>
-                    </button>
+                            ? "bg-gray-800 text-white font-medium shadow-sm"
+                            : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate flex-1">
+                          <MessageSquare
+                            size={14}
+                            className={
+                              currentChatId === item.id
+                                ? "text-blue-400"
+                                : "text-gray-600"
+                            }
+                          />
+                          <span className="truncate">{item.title}</span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(
+                              openMenuId === item.id ? null : item.id
+                            );
+                          }}
+                          className={`p-1 hover:bg-gray-700 rounded transition-colors ${
+                            currentChatId === item.id || openMenuId === item.id
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }`}
+                          aria-label="More options"
+                        >
+                          <MoreVertical
+                            size={14}
+                            className="text-gray-500 hover:text-gray-300"
+                          />
+                        </button>
+                      </button>
+
+                      {/* Dropdown Menu (Pop up) */}
+                      {openMenuId === item.id && (
+                        <div className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-[60] overflow-hidden animate-in fade-in zoom-in duration-150">
+                          <button
+                            onClick={(e) => {
+                              onDeleteChat(e, item.id);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <Trash2 size={12} />
+                            Delete Chat
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -317,7 +383,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
-          <button className="w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2">
+          <button
+            onClick={() => {
+              onOpenSettings();
+              onClose();
+            }}
+            className="w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+          >
             <Settings size={16} />
             Settings
           </button>
@@ -349,9 +421,49 @@ const TranslationApp: React.FC = () => {
   const [targetLanguage, setTargetLanguage] = useState<string>("zu");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  // Settings State
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<
+    "profile" | "password" | "sessions"
+  >("profile");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [isSettingsLoading, setIsSettingsLoading] = useState<boolean>(false);
+
+  // Profile Form State
+  const [profileData, setProfileData] = useState({
+    first_name: "",
+    last_name: "",
+    location: "",
+    bio: "",
+    // email: "",
+  });
+
+  // Password Form State
+  const [passwordData, setPasswordData] = useState({
+    current_password: "",
+    new_password: "",
+    new_password_confirmation: "",
+  });
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        location: user.location || "",
+        bio: user.bio || "",
+        // email: user.email || "",
+      });
+    }
+  }, [user]);
 
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -398,6 +510,105 @@ const TranslationApp: React.FC = () => {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSettingsLoading(true);
+    try {
+      const response = await updateProfile(profileData);
+      toast.success(response.message || "Profile updated successfully");
+      dispatch(setUser({ ...user, ...profileData }));
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.new_password !== passwordData.new_password_confirmation) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    setIsSettingsLoading(true);
+    try {
+      const response = await updatePasswordService(passwordData);
+      toast.success(response.message || "Password updated successfully");
+      setPasswordData({
+        current_password: "",
+        new_password: "",
+        new_password_confirmation: "",
+      });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update password");
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const fetchSessions = async () => {
+    setIsSettingsLoading(true);
+    try {
+      const response = await getSessions();
+      setSessions(response.data || []);
+    } catch (error: any) {
+      console.error("Error fetching sessions:", error);
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await deleteSession(sessionId);
+      toast.success("Session revoked");
+      fetchSessions();
+    } catch (error: any) {
+      toast.error("Failed to revoke session");
+    }
+  };
+
+  useEffect(() => {
+    if (showSettingsModal && activeSettingsTab === "sessions") {
+      fetchSessions();
+    }
+  }, [showSettingsModal, activeSettingsTab]);
+
+  const handleOpenSettings = () => {
+    setShowSettingsModal(true);
+    setActiveSettingsTab("profile");
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setChatToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!chatToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteChat(chatToDelete);
+      toast.success("Chat deleted successfully");
+
+      if (chatToDelete === chatId) {
+        setChatId(null);
+        setMessages([]);
+        navigate("/");
+      }
+
+      fetchHistory();
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete chat");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setChatToDelete(null);
+    }
+  };
+
   useEffect(() => {
     fetchHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -439,7 +650,7 @@ const TranslationApp: React.FC = () => {
     try {
       const payload = {
         message: currentInput,
-        sourceLanguage,
+        sourceLanguage: sourceLanguage === "auto" ? null : sourceLanguage,
         targetLanguage,
         chat_id: chatId || undefined,
       };
@@ -504,7 +715,343 @@ const TranslationApp: React.FC = () => {
           setMessages(chat.messages);
           navigate(`/chat/${chat.id}`);
         }}
+        onDeleteChat={handleDeleteClick}
+        onOpenSettings={handleOpenSettings}
       />
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex h-[500px]">
+            {/* Modal Sidebar */}
+            <div className="w-48 bg-gray-50 border-r border-gray-100 p-4 flex flex-col gap-1">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 px-2">
+                Settings
+              </h2>
+              <button
+                onClick={() => setActiveSettingsTab("profile")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSettingsTab === "profile"
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <User size={18} />
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveSettingsTab("password")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSettingsTab === "password"
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <KeyIcon size={18} />
+                Password
+              </button>
+              <button
+                onClick={() => setActiveSettingsTab("sessions")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSettingsTab === "sessions"
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <Computer size={18} />
+                Sessions
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 flex flex-col relative">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors z-10"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="flex-1 overflow-y-auto p-8">
+                {activeSettingsTab === "profile" && (
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">
+                      Edit Profile
+                    </h3>
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          First Name
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.first_name}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              first_name: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Last Name
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.last_name}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              last_name: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={user.email}
+                          readOnly
+                          // onChange={(e) =>
+                          //   setProfileData({
+                          //     ...profileData,
+                          //     email: e.target.value,
+                          //   })
+                          // }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Location
+                        </label>
+                        <input
+                          type="test"
+                          value={profileData.location}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              location: e.target.value,
+                            })
+                          }
+                          placeholder="Enter your location"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Bio
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.bio}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              bio: e.target.value,
+                            })
+                          }
+                          placeholder="Enter your bio"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSettingsLoading}
+                        className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                      >
+                        <Save size={18} />
+                        {isSettingsLoading ? "Saving..." : "Save Changes"}
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {activeSettingsTab === "password" && (
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">
+                      Update Password
+                    </h3>
+                    <form onSubmit={handleUpdatePassword} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={passwordData.current_password}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              current_password: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={passwordData.new_password}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              new_password: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={passwordData.new_password_confirmation}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              new_password_confirmation: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSettingsLoading}
+                        className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                      >
+                        <KeyIcon size={18} />
+                        {isSettingsLoading ? "Updating..." : "Update Password"}
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {activeSettingsTab === "sessions" && (
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">
+                      Active Sessions
+                    </h3>
+                    <div className="space-y-3">
+                      {isSettingsLoading && sessions.length === 0 ? (
+                        <p className="text-gray-500 text-sm">
+                          Loading sessions...
+                        </p>
+                      ) : sessions.length === 0 ? (
+                        <p className="text-gray-500 text-sm">
+                          No other active sessions found.
+                        </p>
+                      ) : (
+                        sessions.map((session: any) => (
+                          <div
+                            key={session.id}
+                            className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Computer className="text-gray-400" size={24} />
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {session.device || "Unknown Device"}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {session.ip_address} • Last active{" "}
+                                  {new Date(
+                                    session.last_active
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteSession(session.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Revoke session"
+                            >
+                              <LogOut size={18} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                      <p className="text-xs text-gray-400 mt-6 bg-amber-50 p-3 rounded-lg border border-amber-100 flex gap-2">
+                        <Shield
+                          size={16}
+                          className="text-amber-500 flex-shrink-0"
+                        />
+                        Revoking a session will immediately log that device out
+                        of your account.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 relative">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="text-red-600" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Delete Translation?
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-200"
+                >
+                  {isDeleting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">

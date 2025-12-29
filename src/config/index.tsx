@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { QueryClient } from "@tanstack/react-query";
 import { Store } from "../state/store";
+import { reset } from "../state/slices/authReducer";
 // import { reset } from "../state/slices/authReducer";
 
 export const API = axios.create({
@@ -29,9 +30,9 @@ API.interceptors.response.use(
   async (error: AxiosError) => {
     const isAuthRequest = error?.config?.url?.includes("auth/");
     if (error.response?.status === 401 && !isAuthRequest) {
-      // Store.dispatch(reset());
+      Store.dispatch(reset());
       // restore initial auth state
-      // window.location.href = "/";
+      window.location.href = "/login";
     }
     throw error;
   }

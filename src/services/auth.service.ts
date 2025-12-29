@@ -40,3 +40,32 @@ export const forgotPassword = async (email: string) => {
   const response = await API.post("/auth/forgot-password", { email });
   return response.data;
 };
+
+export const updateProfile = async (data: {
+  first_name: string;
+  last_name: string;
+  location: string;
+  bio: string;
+}) => {
+  const response = await API.patch("/profile/update", data);
+  return response.data;
+};
+
+export const updatePassword = async (data: {
+  current_password: string;
+  new_password: string;
+  new_password_confirmation: string;
+}) => {
+  const response = await API.post("/profile/change-password", data);
+  return response.data;
+};
+
+export const getSessions = async () => {
+  const response = await API.get("/sessions");
+  return response.data;
+};
+
+export const deleteSession = async (id: string) => {
+  const response = await API.delete(`/sessions/${id}/revoke`);
+  return response.data;
+};

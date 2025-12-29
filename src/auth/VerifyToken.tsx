@@ -3,8 +3,8 @@ import { Globe, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { resendToken, verifyToken } from "../services/auth.service";
 import toast from "react-hot-toast";
-import { useSelector } from "react-redux";
-import { authType, storedEmail } from "../state/slices/authReducer";
+import { useDispatch, useSelector } from "react-redux";
+import { authType, setToken, storedEmail } from "../state/slices/authReducer";
 
 export default function VerifyTokenScreen() {
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
@@ -14,6 +14,7 @@ export default function VerifyTokenScreen() {
   const tokenType = useSelector(authType);
   const email = useSelector(storedEmail);
   const [resending, setResending] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     // Focus the first input on mount
@@ -70,7 +71,12 @@ export default function VerifyTokenScreen() {
     try {
       const response = await verifyToken(payload);
       toast.success(response.message || "Email verified successfully!");
-      navigate("/login");
+      if (tokenType === "PASSWORD_RESET") {
+        dispatch(setToken(response?.data?.token));
+        navigate("/reset-password");
+      } else {
+        navigate("/login");
+      }
     } catch (err: any) {
       console.error("Verification error:", err);
       toast.error(
