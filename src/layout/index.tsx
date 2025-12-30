@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
 import { reset, selectUser, setUser } from "../state/slices/authReducer";
 import { sendChat, getChats, deleteChat } from "../services/chat.service";
 import {
@@ -720,338 +721,371 @@ const TranslationApp: React.FC = () => {
       />
 
       {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex h-[500px]">
-            {/* Modal Sidebar */}
-            <div className="w-48 bg-gray-50 border-r border-gray-100 p-4 flex flex-col gap-1">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 px-2">
-                Settings
-              </h2>
-              <button
-                onClick={() => setActiveSettingsTab("profile")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSettingsTab === "profile"
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <User size={18} />
-                Profile
-              </button>
-              <button
-                onClick={() => setActiveSettingsTab("password")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSettingsTab === "password"
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <KeyIcon size={18} />
-                Password
-              </button>
-              <button
-                onClick={() => setActiveSettingsTab("sessions")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSettingsTab === "sessions"
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <Computer size={18} />
-                Sessions
-              </button>
-            </div>
+      <AnimatePresence>
+        {showSettingsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col sm:flex-row h-[90vh] sm:h-[500px]"
+            >
+              {/* Modal Sidebar */}
+              <div className="w-full sm:w-48 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100 p-3 sm:p-4 flex flex-row sm:flex-col gap-1 overflow-x-auto sm:overflow-x-visible no-scrollbar">
+                <h2 className="hidden sm:block text-lg font-bold text-gray-900 mb-4 px-2 whitespace-nowrap">
+                  Settings
+                </h2>
+                <button
+                  onClick={() => setActiveSettingsTab("profile")}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeSettingsTab === "profile"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <User size={18} />
+                  Profile
+                </button>
+                <button
+                  onClick={() => setActiveSettingsTab("password")}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeSettingsTab === "password"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <KeyIcon size={18} />
+                  Password
+                </button>
+                <button
+                  onClick={() => setActiveSettingsTab("sessions")}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeSettingsTab === "sessions"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <Computer size={18} />
+                  Sessions
+                </button>
+              </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 flex flex-col relative">
+              {/* Modal Content */}
+              <div className="flex-1 flex flex-col relative">
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors z-10"
+                >
+                  <X size={20} />
+                </button>
+
+                <div className="flex-1 overflow-y-auto p-5 sm:p-8">
+                  {activeSettingsTab === "profile" && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">
+                        Edit Profile
+                      </h3>
+                      <form
+                        onSubmit={handleUpdateProfile}
+                        className="space-y-4"
+                      >
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            First Name
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.first_name}
+                            onChange={(e) =>
+                              setProfileData({
+                                ...profileData,
+                                first_name: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.last_name}
+                            onChange={(e) =>
+                              setProfileData({
+                                ...profileData,
+                                last_name: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email Address
+                          </label>
+                          <input
+                            type="email"
+                            value={user.email}
+                            readOnly
+                            // onChange={(e) =>
+                            //   setProfileData({
+                            //     ...profileData,
+                            //     email: e.target.value,
+                            //   })
+                            // }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Location
+                          </label>
+                          <input
+                            type="test"
+                            value={profileData.location}
+                            onChange={(e) =>
+                              setProfileData({
+                                ...profileData,
+                                location: e.target.value,
+                              })
+                            }
+                            placeholder="Enter your location"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Bio
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.bio}
+                            onChange={(e) =>
+                              setProfileData({
+                                ...profileData,
+                                bio: e.target.value,
+                              })
+                            }
+                            placeholder="Enter your bio"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isSettingsLoading}
+                          className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        >
+                          <Save size={18} />
+                          {isSettingsLoading ? "Saving..." : "Save Changes"}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {activeSettingsTab === "password" && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">
+                        Update Password
+                      </h3>
+                      <form
+                        onSubmit={handleUpdatePassword}
+                        className="space-y-4"
+                      >
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Current Password
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={passwordData.current_password}
+                            onChange={(e) =>
+                              setPasswordData({
+                                ...passwordData,
+                                current_password: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            New Password
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={passwordData.new_password}
+                            onChange={(e) =>
+                              setPasswordData({
+                                ...passwordData,
+                                new_password: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={passwordData.new_password_confirmation}
+                            onChange={(e) =>
+                              setPasswordData({
+                                ...passwordData,
+                                new_password_confirmation: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isSettingsLoading}
+                          className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        >
+                          <KeyIcon size={18} />
+                          {isSettingsLoading
+                            ? "Updating..."
+                            : "Update Password"}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {activeSettingsTab === "sessions" && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">
+                        Active Sessions
+                      </h3>
+                      <div className="space-y-3">
+                        {isSettingsLoading && sessions.length === 0 ? (
+                          <p className="text-gray-500 text-sm">
+                            Loading sessions...
+                          </p>
+                        ) : sessions.length === 0 ? (
+                          <p className="text-gray-500 text-sm">
+                            No other active sessions found.
+                          </p>
+                        ) : (
+                          sessions.map((session: any) => (
+                            <div
+                              key={session.id}
+                              className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Computer className="text-gray-400" size={24} />
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {session.device || "Unknown Device"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {session.ip_address} • Last active{" "}
+                                    {new Date(
+                                      session.last_active
+                                    ).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteSession(session.id)}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Revoke session"
+                              >
+                                <LogOut size={18} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                        <p className="text-xs text-gray-400 mt-6 bg-amber-50 p-3 rounded-lg border border-amber-100 flex gap-2">
+                          <Shield
+                            size={16}
+                            className="text-amber-500 flex-shrink-0"
+                          />
+                          Revoking a session will immediately log that device
+                          out of your account.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden relative"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <Trash2 className="text-red-600" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Delete Translation?
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-200"
+                  >
+                    {isDeleting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Delete"
+                    )}
+                  </button>
+                </div>
+              </div>
               <button
-                onClick={() => setShowSettingsModal(false)}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors z-10"
+                onClick={() => setShowDeleteModal(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
               >
                 <X size={20} />
               </button>
-
-              <div className="flex-1 overflow-y-auto p-8">
-                {activeSettingsTab === "profile" && (
-                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Edit Profile
-                    </h3>
-                    <form onSubmit={handleUpdateProfile} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.first_name}
-                          onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              first_name: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.last_name}
-                          onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              last_name: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          value={user.email}
-                          readOnly
-                          // onChange={(e) =>
-                          //   setProfileData({
-                          //     ...profileData,
-                          //     email: e.target.value,
-                          //   })
-                          // }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Location
-                        </label>
-                        <input
-                          type="test"
-                          value={profileData.location}
-                          onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              location: e.target.value,
-                            })
-                          }
-                          placeholder="Enter your location"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Bio
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.bio}
-                          onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              bio: e.target.value,
-                            })
-                          }
-                          placeholder="Enter your bio"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={isSettingsLoading}
-                        className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                      >
-                        <Save size={18} />
-                        {isSettingsLoading ? "Saving..." : "Save Changes"}
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {activeSettingsTab === "password" && (
-                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Update Password
-                    </h3>
-                    <form onSubmit={handleUpdatePassword} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={passwordData.current_password}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              current_password: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={passwordData.new_password}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              new_password: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={passwordData.new_password_confirmation}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              new_password_confirmation: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={isSettingsLoading}
-                        className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                      >
-                        <KeyIcon size={18} />
-                        {isSettingsLoading ? "Updating..." : "Update Password"}
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {activeSettingsTab === "sessions" && (
-                  <div className="animate-in fade-in slide-in-from-right-4 duration-200">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Active Sessions
-                    </h3>
-                    <div className="space-y-3">
-                      {isSettingsLoading && sessions.length === 0 ? (
-                        <p className="text-gray-500 text-sm">
-                          Loading sessions...
-                        </p>
-                      ) : sessions.length === 0 ? (
-                        <p className="text-gray-500 text-sm">
-                          No other active sessions found.
-                        </p>
-                      ) : (
-                        sessions.map((session: any) => (
-                          <div
-                            key={session.id}
-                            className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Computer className="text-gray-400" size={24} />
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {session.device || "Unknown Device"}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {session.ip_address} • Last active{" "}
-                                  {new Date(
-                                    session.last_active
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteSession(session.id)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Revoke session"
-                            >
-                              <LogOut size={18} />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                      <p className="text-xs text-gray-400 mt-6 bg-amber-50 p-3 rounded-lg border border-amber-100 flex gap-2">
-                        <Shield
-                          size={16}
-                          className="text-amber-500 flex-shrink-0"
-                        />
-                        Revoking a session will immediately log that device out
-                        of your account.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 relative">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <Trash2 className="text-red-600" size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Delete Translation?
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  disabled={isDeleting}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-200"
-                >
-                  {isDeleting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    "Delete"
-                  )}
-                </button>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowDeleteModal(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">

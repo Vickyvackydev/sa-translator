@@ -123,8 +123,8 @@ export default function LoginScreen() {
             </div>
 
             {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
+            <div className="flex items-center justify-end">
+              {/* <label className="flex items-center">
                 <input
                   type="checkbox"
                   checked={formData.rememberMe}
@@ -134,7 +134,7 @@ export default function LoginScreen() {
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm text-gray-700">Remember me</span>
-              </label>
+              </label> */}
               <button
                 type="button"
                 onClick={() => navigate("/forgot-password")}
