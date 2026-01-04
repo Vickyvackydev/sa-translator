@@ -14,6 +14,10 @@ import {
   Key as KeyIcon,
   Monitor as Computer,
   Save,
+  Volume2,
+  Square,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -79,8 +83,55 @@ interface SidebarProps {
 
 // Message Component
 const Message: React.FC<MessageProps> = ({ message, isUser }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    const handleEnd = () => setIsPlaying(false);
+    window.speechSynthesis.addEventListener("end", handleEnd);
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const handleSpeak = () => {
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(message.text);
+    if (message.detectedLang) {
+      utterance.lang = message.detectedLang.toLowerCase();
+    }
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+    };
+
+    utterance.onerror = () => {
+      setIsPlaying(false);
+    };
+
+    setIsPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.text);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  };
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-6`}>
+    <div
+      className={`flex ${isUser ? "justify-end" : "justify-start"} mb-6 group`}
+    >
       <div
         className={`flex gap-3 max-w-3xl ${
           isUser ? "flex-row-reverse" : "flex-row"
@@ -107,11 +158,35 @@ const Message: React.FC<MessageProps> = ({ message, isUser }) => {
           >
             <p className="text-sm leading-relaxed">{message.text}</p>
           </div>
-          {message.detectedLang && (
-            <span className="text-xs text-gray-500 mt-1 px-2">
-              {message.detectedLang}
-            </span>
-          )}
+          <div className="flex items-center gap-2 mt-1 px-2 min-h-[24px]">
+            {message.detectedLang && (
+              <span className="text-xs text-gray-500">
+                {message.detectedLang}
+              </span>
+            )}
+            {!isUser && (
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={handleSpeak}
+                  className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-700"
+                  title={isPlaying ? "Stop reading" : "Read aloud"}
+                >
+                  {isPlaying ? (
+                    <Square size={14} fill="currentColor" />
+                  ) : (
+                    <Volume2 size={14} />
+                  )}
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-700"
+                  title="Copy to clipboard"
+                >
+                  {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -316,11 +391,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <div className="flex items-center gap-2 truncate flex-1">
                           <MessageSquare
                             size={14}
-                            className={
+                            className={`${
                               currentChatId === item.id
                                 ? "text-blue-400"
                                 : "text-gray-600"
-                            }
+                            } min-w-5`}
                           />
                           <span className="truncate">{item.title}</span>
                         </div>
@@ -418,7 +493,7 @@ const TranslationApp: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<ChatHistoryItem[]>([]);
   const [inputText, setInputText] = useState<string>("");
-  const [sourceLanguage, setSourceLanguage] = useState<string>("en");
+  const [sourceLanguage, setSourceLanguage] = useState<string>("");
   const [targetLanguage, setTargetLanguage] = useState<string>("zu");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
