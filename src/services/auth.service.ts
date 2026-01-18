@@ -7,6 +7,7 @@ export const register = async (data: {
   email: string;
   password: string;
   password_confirmation: string;
+  role: string;
 }) => {
   const response = await API.post("/auth/register", data, {
     headers: {

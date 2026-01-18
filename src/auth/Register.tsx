@@ -16,6 +16,7 @@ interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
+  role: string;
 }
 
 export default function RegisterScreen() {
@@ -24,6 +25,7 @@ export default function RegisterScreen() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "student",
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] =
@@ -47,6 +49,7 @@ export default function RegisterScreen() {
       email: formData.email,
       password: formData.password,
       password_confirmation: formData.confirmPassword,
+      role: formData.role,
     };
     try {
       const response = await register(payload);
@@ -101,8 +104,32 @@ export default function RegisterScreen() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="full name"
+                  placeholder="fullname"
                 />
+              </div>
+            </div>
+
+            {/* Role Input */}
+            <div>
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Role
+              </label>
+              <div className="relative">
+                <select
+                  id="role"
+                  required
+                  value={formData.role}
+                  onChange={(e) =>
+                    setFormData({ ...formData, role: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="student">Student</option>
+                  <option value="lecturer">Lecturer</option>
+                </select>
               </div>
             </div>
 
