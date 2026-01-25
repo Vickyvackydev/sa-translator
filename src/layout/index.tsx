@@ -651,7 +651,6 @@ const TranslationApp: React.FC = () => {
     channel.listen(".message.sent", (notification: any) => {
       // console.log("📩 Message event received:", notification);
 
-      // 1. Show Native Browser Notification
       if (Notification.permission === "granted") {
         const notif = new Notification(notification.title || "New Message", {
           body: notification.body || "You have a new message",
@@ -668,10 +667,8 @@ const TranslationApp: React.FC = () => {
         };
       }
 
-      // 2. Update UI Logic
       const senderId = notification.meta_data?.sender_id;
 
-      // If the message is from the user we are currently chatting with
       if (
         selectedChatUserId &&
         String(senderId) === String(selectedChatUserId)
