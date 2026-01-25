@@ -24,10 +24,21 @@ export interface StudentResponse {
   preferred_language: string;
   created_at: string;
 }
+export interface LecturerResponse {
+  lecturer_id: number;
+  name: string;
+  last_message: {
+    id: number;
+    body: string;
+    sender_id: number;
+    created_at: string;
+  };
+}
 
 export interface UserPayload {
-  id: string;
+  id: string | number;
   first_name: string;
   last_name: string;
   email: string;
+  role: string;
 }

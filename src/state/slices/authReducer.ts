@@ -30,6 +30,9 @@ export const AuthSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<UserPayload>) => {
       state.user = action.payload;
+      if (action.payload.role) {
+        state.role = action.payload.role;
+      }
     },
     setToken: (state, action: PayloadAction<string>) => {
       state.token = action.payload;
@@ -45,7 +48,7 @@ export const AuthSlice = createSlice({
     },
     setAuthType: (
       state,
-      action: PayloadAction<"REGISTER" | "PASSWORD_RESET" | "EMAIL_RESET">
+      action: PayloadAction<"REGISTER" | "PASSWORD_RESET" | "EMAIL_RESET">,
     ) => {
       state.authType = action.payload;
     },

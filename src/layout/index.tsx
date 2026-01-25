@@ -5,11 +5,8 @@ import {
   Menu,
   LogOut,
   User,
-  Settings,
-  MessageSquare,
   Trash2,
   X,
-  MoreVertical,
   Shield,
   Key as KeyIcon,
   Monitor as Computer,
@@ -22,27 +19,38 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
-import { reset, selectUser, setUser } from "../state/slices/authReducer";
-import { sendChat, getChats, deleteChat } from "../services/chat.service";
+import { selectUser, setUser } from "../state/slices/authReducer";
+import {
+  translate,
+  sendMessage,
+  deleteChat,
+  getMessages,
+  getStudentMessages,
+  sendStudentMessage,
+} from "../services/chat.service";
 import {
   updateProfile,
   updatePassword as updatePasswordService,
   getSessions,
   deleteSession,
 } from "../services/auth.service";
+import { getLecturers, getStudents } from "../services/user.service";
+import { LecturerResponse, StudentResponse } from "../types";
 import toast from "react-hot-toast";
+import { Sidebar } from "../components/sidebar";
+import { ClassManagement } from "./ClassManagement";
+
+import { Store } from "../state/store";
+import getEcho from "../config/echo";
 
 // Types
 interface Message {
   id: number;
+  realId?: string | number;
   text: string;
   isUser: boolean;
   detectedLang?: string;
-}
-
-interface UserProfile {
-  username: string;
-  email: string;
+  translation?: string;
 }
 
 interface Language {
@@ -50,16 +58,18 @@ interface Language {
   name: string;
 }
 
-interface ChatHistoryItem {
-  id: string;
-  title: string;
-  created_at: string;
-  messages: Message[];
-}
+// interface ChatHistoryItem {
+//   id: string;
+//   title: string;
+//   created_at: string;
+//   messages: Message[];
+// }
 
 interface MessageProps {
   message: Message;
   isUser: boolean;
+  onTranslate?: (messageId: string | number, language: string) => Promise<void>;
+  isTranslating?: boolean;
 }
 
 interface LanguageSelectorProps {
@@ -69,22 +79,18 @@ interface LanguageSelectorProps {
   setTargetLanguage: (lang: string) => void;
 }
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-  user: UserProfile;
-  onNewChat: () => void;
-  history: ChatHistoryItem[];
-  onSelectChat: (chat: ChatHistoryItem) => void;
-  currentChatId: string | null;
-  onDeleteChat: (e: React.MouseEvent, id: string) => void;
-  onOpenSettings: () => void;
-}
-
 // Message Component
-const Message: React.FC<MessageProps> = ({ message, isUser }) => {
+const Message: React.FC<MessageProps> = ({
+  message,
+  isUser,
+  onTranslate,
+  isTranslating,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [showTranslateMenu, setShowTranslateMenu] = useState(false);
+  // const [isTranslating, setIsTranslating] = useState(false);
+  const translateMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleEnd = () => setIsPlaying(false);
@@ -93,6 +99,26 @@ const Message: React.FC<MessageProps> = ({ message, isUser }) => {
       window.speechSynthesis.cancel();
     };
   }, []);
+
+  // Close translate menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        translateMenuRef.current &&
+        !translateMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowTranslateMenu(false);
+      }
+    };
+
+    if (showTranslateMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTranslateMenu]);
 
   const handleSpeak = () => {
     if (isPlaying) {
@@ -152,17 +178,33 @@ const Message: React.FC<MessageProps> = ({ message, isUser }) => {
           className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
         >
           <div
-            className={`px-4 py-3 rounded-2xl ${
+            className={`px-4 py-3 rounded-2xl relative ${
               isUser ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"
             }`}
           >
             <p className="text-sm leading-relaxed">{message.text}</p>
+            {message.translation && (
+              <div className="mt-2 pt-2 border-t border-gray-200/50">
+                <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">
+                  Translation
+                </p>
+                <p className="text-sm leading-relaxed italic text-gray-700">
+                  {message.translation}
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1 px-2 min-h-[24px]">
             {message.detectedLang && (
               <span className="text-xs text-gray-500">
                 {message.detectedLang}
               </span>
+            )}
+            {isTranslating && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="w-3 h-3 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                <span>Translating...</span>
+              </div>
             )}
             {!isUser && (
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -184,6 +226,43 @@ const Message: React.FC<MessageProps> = ({ message, isUser }) => {
                 >
                   {isCopied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
+                {message.realId && (
+                  <div className="relative" ref={translateMenuRef}>
+                    <button
+                      onClick={() => setShowTranslateMenu(!showTranslateMenu)}
+                      className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                      title="Translate"
+                    >
+                      <Globe size={14} />
+                    </button>
+                    {showTranslateMenu && (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-1 min-w-[120px]">
+                        <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+                          Translate to...
+                        </p>
+                        {[
+                          { code: "en", name: "English" },
+                          { code: "zu", name: "isiZulu" },
+                          { code: "xh", name: "isiXhosa" },
+                          { code: "af", name: "Afrikaans" },
+                          { code: "st", name: "Sesotho" },
+                          { code: "tn", name: "Setswana" },
+                        ].map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              onTranslate?.(message.realId!, lang.code);
+                              setShowTranslateMenu(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                          >
+                            {lang.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -276,232 +355,75 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 };
 
 // Sidebar Component
-const Sidebar: React.FC<SidebarProps> = ({
-  isOpen,
-  onClose,
-  user,
-  onNewChat,
-  history,
-  onSelectChat,
-  currentChatId,
-  onDeleteChat,
-  onOpenSettings,
-}) => {
-  const groupHistory = () => {
-    const groups: { [key: string]: ChatHistoryItem[] } = {
-      Today: [],
-      Yesterday: [],
-      "Previous 7 Days": [],
-    };
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    history.forEach((item) => {
-      const itemDate = new Date(item.created_at);
-      if (itemDate >= today) {
-        groups["Today"].push(item);
-      } else if (itemDate >= yesterday) {
-        groups["Yesterday"].push(item);
-      } else if (itemDate >= sevenDaysAgo) {
-        groups["Previous 7 Days"].push(item);
-      }
-    });
-
-    return groups;
-  };
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const historyGroups = groupHistory();
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => setOpenMenuId(null);
-    if (openMenuId) {
-      window.addEventListener("click", handleClickOutside);
-    }
-    return () => window.removeEventListener("click", handleClickOutside);
-  }, [openMenuId]);
-
-  return (
-    <>
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed lg:static inset-y-0 left-0 w-64 bg-gray-900 text-white transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 transition-transform duration-300 ease-in-out z-50 flex flex-col`}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <Globe className="text-amber-500" size={28} />
-            <h1 className="text-lg font-semibold">SA Translator</h1>
-          </div>
-        </div>
-
-        {/* New Chat Button */}
-        <div className="p-4">
-          <button
-            onClick={() => {
-              onNewChat();
-              onClose();
-            }}
-            className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            <MessageSquare size={18} />
-            New Translation
-          </button>
-        </div>
-
-        {/* Recent Chats */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-thin scrollbar-thumb-gray-700">
-          {Object.entries(historyGroups).map(([period, items]) =>
-            items.length > 0 ? (
-              <div key={period} className="mb-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-4 px-2">
-                  {period}
-                </h3>
-                <div className="space-y-1">
-                  {items.map((item) => (
-                    <div key={item.id} className="relative group">
-                      <button
-                        onClick={() => {
-                          onSelectChat(item);
-                          onClose();
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate flex items-center justify-between ${
-                          currentChatId === item.id
-                            ? "bg-gray-800 text-white font-medium shadow-sm"
-                            : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate flex-1">
-                          <MessageSquare
-                            size={14}
-                            className={`${
-                              currentChatId === item.id
-                                ? "text-blue-400"
-                                : "text-gray-600"
-                            } min-w-5`}
-                          />
-                          <span className="truncate">{item.title}</span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(
-                              openMenuId === item.id ? null : item.id
-                            );
-                          }}
-                          className={`p-1 hover:bg-gray-700 rounded transition-colors ${
-                            currentChatId === item.id || openMenuId === item.id
-                              ? "opacity-100"
-                              : "opacity-0 group-hover:opacity-100"
-                          }`}
-                          aria-label="More options"
-                        >
-                          <MoreVertical
-                            size={14}
-                            className="text-gray-500 hover:text-gray-300"
-                          />
-                        </button>
-                      </button>
-
-                      {/* Dropdown Menu (Pop up) */}
-                      {openMenuId === item.id && (
-                        <div className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-[60] overflow-hidden animate-in fade-in zoom-in duration-150">
-                          <button
-                            onClick={(e) => {
-                              onDeleteChat(e, item.id);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"
-                          >
-                            <Trash2 size={12} />
-                            Delete Chat
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null
-          )}
-          {history.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-              <p className="text-xs text-gray-500">No previous translations</p>
-            </div>
-          )}
-        </div>
-
-        {/* User Menu */}
-        <div className="border-t border-gray-800 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <User size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.username}</p>
-              <p className="text-xs text-gray-400 truncate">{user.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              onOpenSettings();
-              onClose();
-            }}
-            className="w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Settings size={16} />
-            Settings
-          </button>
-          <button
-            onClick={() => {
-              dispatch(reset());
-              navigate("/login");
-            }}
-            className="w-full px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2 mt-1"
-          >
-            <LogOut size={16} />
-            Log out
-          </button>
-        </div>
-      </div>
-    </>
-  );
-};
 
 // Main App Component
 const TranslationApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [chatId, setChatId] = useState<string | null>(id || null);
+
   const [messages, setMessages] = useState<Message[]>([]);
-  const [history, setHistory] = useState<ChatHistoryItem[]>([]);
+  // const [history, setHistory] = useState<ChatHistoryItem[]>([]);
+  const [students, setStudents] = useState<StudentResponse[]>([]);
+  const [lecturers, setLecturers] = useState<LecturerResponse[]>([]);
+  const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(
+    null,
+  );
   const [inputText, setInputText] = useState<string>("");
-  const [sourceLanguage, setSourceLanguage] = useState<string>("");
-  const [targetLanguage, setTargetLanguage] = useState<string>("zu");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<"chat" | "classes">("chat");
+  const [translatingMessageId, setTranslatingMessageId] = useState<
+    string | number | null
+  >(null);
 
-  // Settings State
+  const [usersPage, setUsersPage] = useState(1);
+  const [hasMoreUsers, setHasMoreUsers] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  const activeUser = useSelector(selectUser);
+
+  const loadMoreUsers = async () => {
+    if (isFetchingMore || !hasMoreUsers) return;
+    setIsFetchingMore(true);
+    try {
+      const nextPage = usersPage + 1;
+      let response: any;
+      if (activeUser?.role === "student") {
+        response = await getLecturers(nextPage);
+        if (response?.data?.length > 0) {
+          setLecturers((prev) => [...prev, ...response.data]);
+          setUsersPage(nextPage);
+        } else {
+          setHasMoreUsers(false);
+        }
+      } else {
+        response = await getStudents(nextPage);
+        if (response?.data?.length > 0) {
+          setStudents((prev) => [...prev, ...response.data]);
+          setUsersPage(nextPage);
+        } else {
+          setHasMoreUsers(false);
+        }
+      }
+
+      // Check if we've reached the last page
+      if (
+        response?.meta &&
+        response.meta.current_page >= response.meta.last_page
+      ) {
+        setHasMoreUsers(false);
+      }
+    } catch (error) {
+      console.error("Error loading more users:", error);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
+
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<
     "profile" | "password" | "sessions"
@@ -509,16 +431,13 @@ const TranslationApp: React.FC = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [isSettingsLoading, setIsSettingsLoading] = useState<boolean>(false);
 
-  // Profile Form State
   const [profileData, setProfileData] = useState({
     first_name: "",
     last_name: "",
     location: "",
     bio: "",
-    // email: "",
   });
 
-  // Password Form State
   const [passwordData, setPasswordData] = useState({
     current_password: "",
     new_password: "",
@@ -527,62 +446,84 @@ const TranslationApp: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
-  const user = useSelector(selectUser);
 
   useEffect(() => {
-    if (user) {
+    if (activeUser) {
       setProfileData({
-        first_name: user.first_name || "",
-        last_name: user.last_name || "",
-        location: user.location || "",
-        bio: user.bio || "",
-        // email: user.email || "",
+        first_name: activeUser.first_name || "",
+        last_name: activeUser.last_name || "",
+        location: activeUser.location || "",
+        bio: activeUser.bio || "",
       });
     }
-  }, [user]);
+  }, [activeUser]);
 
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const fetchHistory = async () => {
+  const fetchStudents = async () => {
     try {
-      const response = await getChats();
-      if (response && response.data) {
-        // Map the API structure to our ChatHistoryItem interface
-        const mappedHistory: ChatHistoryItem[] = response.data.map(
-          (chat: any) => ({
-            id: chat.id,
-            title: chat.title,
-            created_at: chat.created_at,
-            messages: chat.messages.map((msg: any) => ({
-              id: msg.id,
-              text: msg.content,
-              isUser: msg.sender === "user",
-              // detectedLang:
-              //   msg.sender === "user"
-              //     ? chatId === chat.id
-              //       ? sourceLanguage.toUpperCase()
-              //       : "EN"
-              //     : chatId === chat.id
-              //     ? targetLanguage.toUpperCase()
-              //     : "ZU",
-            })),
-          })
-        );
-        setHistory(mappedHistory);
-
-        // If there's an ID in the URL, load those messages
-        if (id) {
-          const currentChat = mappedHistory.find((c) => c.id === id);
-          if (currentChat) {
-            setMessages(currentChat.messages);
-            setChatId(id);
-          }
-        }
-      }
+      const response = await getStudents();
+      setStudents(response?.data || []);
     } catch (error) {
-      console.error("Error fetching history:", error);
+      console.error("Error fetching students:", error);
+      toast.error("Failed to load students");
+    }
+  };
+
+  const fetchLecturers = async () => {
+    try {
+      const response = await getLecturers();
+      setLecturers(response?.data || []);
+    } catch (error) {
+      console.error("Error fetching lecturers:", error);
+      toast.error("Failed to load lecturers");
+    }
+  };
+
+  const fetchChatMessages = async (userId: string) => {
+    setIsLoading(true);
+    try {
+      const response =
+        activeUser?.role === "lecturer"
+          ? await getMessages(userId)
+          : await getStudentMessages(userId);
+      const rawMessages = response?.data || [];
+      const mappedMessages: Message[] = [];
+
+      rawMessages.forEach((msg: any) => {
+        // Logic depends on who is the active user
+        const isFromMe = String(msg.sender_id) === String(activeUser.id);
+
+        // If it's from me, it's the 'user message'
+        if (msg.body_original) {
+          mappedMessages.push({
+            id: Number(msg.id) * 2,
+            realId: msg.id,
+            text: msg.body_original,
+            isUser: isFromMe,
+            // detectedLang: "EN",
+          });
+        }
+
+        // The translation/response
+        if (msg.translated_text) {
+          mappedMessages.push({
+            id: Number(msg.id) * 2 + 1,
+            text: msg.translated_text,
+            isUser: !isFromMe,
+            // detectedLang: activeUser.role === "student" ? "EN" : "ZU",
+          });
+        }
+      });
+
+      setMessages(mappedMessages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      toast.error("Failed to load messages");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -592,7 +533,7 @@ const TranslationApp: React.FC = () => {
     try {
       const response = await updateProfile(profileData);
       toast.success(response.message || "Profile updated successfully");
-      dispatch(setUser({ ...user, ...profileData }));
+      dispatch(setUser({ ...activeUser, ...profileData }));
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
@@ -667,14 +608,11 @@ const TranslationApp: React.FC = () => {
     try {
       await deleteChat(chatToDelete);
       toast.success("Chat deleted successfully");
-
       if (chatToDelete === chatId) {
         setChatId(null);
         setMessages([]);
         navigate("/");
       }
-
-      fetchHistory();
     } catch (error: any) {
       console.error("Delete error:", error);
       toast.error(error.response?.data?.message || "Failed to delete chat");
@@ -686,85 +624,147 @@ const TranslationApp: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (activeUser?.role === "student") {
+      fetchLecturers();
+    } else {
+      fetchStudents();
+    }
+  }, [activeUser]);
+
+  // Request notification permission
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
   }, []);
 
-  // Sync state if navigation happens (e.g., clicking a history item or back/forward)
   useEffect(() => {
-    if (id && history.length > 0) {
-      const currentChat = history.find((c) => c.id === id);
-      if (currentChat) {
-        setMessages(currentChat.messages);
-        setChatId(id);
-      }
-    } else if (!id) {
-      setMessages([]);
-      setChatId(null);
-    }
-  }, [id, history]);
+    if (!activeUser?.id) return;
 
+    const token = Store.getState().auths.token;
+    const echo = getEcho(token);
+
+    // console.log("🔧 Echo subscribing to user." + activeUser.id);
+    const channel = echo.private(`user.${activeUser.id}`);
+
+    // Confirmed event name for new messages
+    channel.listen(".message.sent", (notification: any) => {
+      // console.log("📩 Message event received:", notification);
+
+      // 1. Show Native Browser Notification
+      if (Notification.permission === "granted") {
+        const notif = new Notification(notification.title || "New Message", {
+          body: notification.body || "You have a new message",
+          icon: "/favicon.ico",
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          if (notification.meta_data?.sender_id) {
+            const userId = String(notification.meta_data.sender_id);
+            setSelectedChatUserId(userId);
+            fetchChatMessages(userId);
+          }
+        };
+      }
+
+      // 2. Update UI Logic
+      const senderId = notification.meta_data?.sender_id;
+
+      // If the message is from the user we are currently chatting with
+      if (
+        selectedChatUserId &&
+        String(senderId) === String(selectedChatUserId)
+      ) {
+        fetchChatMessages(selectedChatUserId);
+      } else {
+        // If it's a different user, just refresh the lists to show latest state/unread
+        if (activeUser?.role === "student") {
+          fetchLecturers();
+        } else {
+          fetchStudents();
+        }
+      }
+
+      // toast.success(notification.body || "New message received!");
+    });
+
+    // Handle read notifications or other system events
+    channel.notification((notification: any) => {
+      console.log("🔔 System notification:", notification);
+      if (activeUser?.role === "student") {
+        fetchLecturers();
+      } else {
+        fetchStudents();
+      }
+    });
+
+    return () => {
+      echo.leaveChannel(`user.${activeUser.id}`);
+    };
+  }, [activeUser?.id, selectedChatUserId]);
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const handleSendMessage = async (): Promise<void> => {
-    if (!inputText.trim()) return;
+    if (!selectedChatUserId) return;
 
     const userMessage: Message = {
       id: Date.now(),
       text: inputText,
       isUser: true,
-      detectedLang: sourceLanguage.toUpperCase(),
+      detectedLang: activeUser.role === "student" ? "ZU" : "EN",
     };
 
     setMessages((prev) => [...prev, userMessage]);
     const currentInput = inputText;
     setInputText("");
-    setIsLoading(true);
 
     try {
       const payload = {
         message: currentInput,
-        sourceLanguage: sourceLanguage === "auto" ? null : sourceLanguage,
-        targetLanguage,
-        chat_id: chatId || undefined,
+        receiver_id: selectedChatUserId,
       };
 
-      const response = await sendChat(payload);
-
-      if (response && response.data) {
-        if (!chatId && response.data.id) {
-          setChatId(response.data.id);
-          navigate(`/chat/${response.data.id}`);
-        }
-
-        const newMessages: Message[] = response.data.messages.map(
-          (msg: any) => ({
-            id: msg.id,
-            text: msg.content,
-            isUser: msg.sender === "user",
-            detectedLang: (msg.sender === "user"
-              ? sourceLanguage
-              : targetLanguage
-            ).toUpperCase(),
-          })
-        );
-
-        setMessages(newMessages);
-        // Refresh history to show new chat or updated title
-        fetchHistory();
-      }
+      activeUser?.role === "student"
+        ? await sendStudentMessage(payload)
+        : await sendMessage(payload);
     } catch (error: any) {
       console.error("Chat error:", error);
       toast.error(error.response?.data?.message || "Failed to send message");
+    }
+  };
+
+  const handleTranslate = async (
+    messageId: string | number,
+    language: string,
+  ) => {
+    setTranslatingMessageId(messageId);
+    try {
+      const response = await translate({ message_id: messageId, language });
+      if (response?.data?.translated) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.realId === messageId
+              ? { ...msg, translation: response.data.translated }
+              : msg,
+          ),
+        );
+        // toast.success("Message translated");
+      }
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to translate message",
+      );
     } finally {
-      setIsLoading(false);
+      setTranslatingMessageId(null);
     }
   };
 
   const handleKeyPress = (
-    e: React.KeyboardEvent<HTMLTextAreaElement>
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
   ): void => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -772,27 +772,40 @@ const TranslationApp: React.FC = () => {
     }
   };
 
+  // console.log(activeUser?.role);
+
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={user}
-        onNewChat={() => {
-          setChatId(null);
-          setMessages([]);
-          navigate("/");
+        user={{
+          username: `${activeUser?.first_name} ${activeUser?.last_name}`,
+          email: activeUser?.email || "",
         }}
-        history={history}
-        currentChatId={chatId}
-        onSelectChat={(chat) => {
-          setChatId(chat.id);
-          setMessages(chat.messages);
-          navigate(`/chat/${chat.id}`);
+        onNewChat={() => {
+          if (activeUser?.role === "lecturer") {
+            setCurrentView(currentView === "chat" ? "classes" : "chat");
+          } else {
+            setSelectedChatUserId(null);
+            setMessages([]);
+          }
+        }}
+        students={students}
+        lecturers={lecturers}
+        selectedStudentId={selectedChatUserId}
+        onSelect={(user: StudentResponse | LecturerResponse) => {
+          const userId =
+            "id" in user ? String(user.id) : String(user.lecturer_id);
+          setSelectedChatUserId(userId);
+          setCurrentView("chat");
+          setMessages([]);
+          fetchChatMessages(userId);
         }}
         onDeleteChat={handleDeleteClick}
         onOpenSettings={handleOpenSettings}
+        onLoadMore={loadMoreUsers}
       />
 
       {/* Settings Modal */}
@@ -908,7 +921,7 @@ const TranslationApp: React.FC = () => {
                           </label>
                           <input
                             type="email"
-                            value={user.email}
+                            value={activeUser?.email || ""}
                             readOnly
                             // onChange={(e) =>
                             //   setProfileData({
@@ -1068,7 +1081,7 @@ const TranslationApp: React.FC = () => {
                                   <p className="text-xs text-gray-500">
                                     {session.ip_address} • Last active{" "}
                                     {new Date(
-                                      session.last_active
+                                      session.last_active,
                                     ).toLocaleDateString()}
                                   </p>
                                 </div>
@@ -1163,109 +1176,106 @@ const TranslationApp: React.FC = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <header className="h-16 border-b border-gray-100 flex items-center justify-between px-4 lg:px-8">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Toggle sidebar"
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
           >
             <Menu size={24} />
           </button>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Language Translation
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              {currentView === "classes"
+                ? "Class Management"
+                : selectedChatUserId
+                  ? activeUser?.role === "student"
+                    ? "Lecturer Chat"
+                    : "Student Chat"
+                  : "Welcome"}
+            </h2>
+          </div>
         </header>
 
-        {/* Language Selector */}
-        <LanguageSelector
-          sourceLanguage={sourceLanguage}
-          setSourceLanguage={setSourceLanguage}
-          targetLanguage={targetLanguage}
-          setTargetLanguage={setTargetLanguage}
-        />
-
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <Globe className="text-gray-300 mb-4" size={64} />
-              <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                Welcome to SA Translator
-              </h3>
-              <p className="text-gray-600 max-w-md">
-                Start a conversation by typing a message below. Your text will
-                be translated between English and South African languages
-                instantly.
-              </p>
-            </div>
-          ) : (
-            <>
-              {messages.map((message: Message) => (
-                <Message
-                  key={message.id}
-                  message={message}
-                  isUser={message.isUser}
-                />
-              ))}
-              {isLoading && (
-                <div className="flex justify-start mb-6">
-                  <div className="flex gap-3 max-w-3xl">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-amber-600 animate-pulse">
-                      <Globe size={18} className="text-white" />
-                    </div>
-                    <div className="px-5 py-4 bg-gray-100 rounded-2xl shadow-sm border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 ml-2 animate-pulse">
-                          Translating...
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+        {currentView === "classes" ? (
+          <ClassManagement />
+        ) : (
+          <>
+            {!selectedChatUserId ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-white to-blue-50/30">
+                <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-200 animate-in fade-in zoom-in duration-500">
+                  <Globe className="text-white" size={40} />
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
-
-        {/* Input Area */}
-        <div className="border-t border-gray-200 bg-white p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 relative">
-                <textarea
-                  value={inputText}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setInputText(e.target.value)
-                  }
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  rows={1}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  style={{ minHeight: "52px", maxHeight: "200px" }}
-                />
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Ready to translate?
+                </h3>
+                <p className="text-gray-500 max-w-sm">
+                  {activeUser?.role === "student"
+                    ? "Select a lecturer from the sidebar to start a conversation."
+                    : "Select a student from the sidebar to start translating."}
+                </p>
               </div>
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim() || isLoading}
-                className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                style={{ minHeight: "52px" }}
-              >
-                <Send size={20} />
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              Powered by OpenAI • Translation accuracy may vary
-            </p>
-          </div>
-        </div>
+            ) : (
+              <>
+                <LanguageSelector
+                  sourceLanguage={activeUser?.role === "student" ? "zu" : "en"}
+                  setSourceLanguage={() => {}}
+                  targetLanguage={activeUser?.role === "student" ? "en" : "zu"}
+                  setTargetLanguage={() => {}}
+                />
+
+                <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-4">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((msg) => (
+                        <Message
+                          key={msg.id}
+                          message={msg}
+                          isUser={msg.isUser}
+                          onTranslate={handleTranslate}
+                          isTranslating={msg.realId === translatingMessageId}
+                        />
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+
+                <div className="p-4 lg:p-8 bg-white border-t border-gray-100">
+                  <div className="max-w-4xl mx-auto relative group">
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder={
+                        activeUser?.role === "student"
+                          ? "Type in isiZulu..."
+                          : "Type in English..."
+                      }
+                      className="w-full p-4 pr-14 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none shadow-sm"
+                      rows={1}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!inputText.trim()}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 transition-colors shadow-lg shadow-blue-200 disabled:shadow-none"
+                    >
+                      <Send size={20} />
+                    </button>
+                  </div>
+                  <p className="text-center text-xs text-gray-400 mt-4">
+                    Messages are automatically translated based on your role.
+                  </p>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

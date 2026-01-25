@@ -23,10 +23,24 @@ export const deleteChat = async (id: string) => {
 };
 
 // use this for now
-export const sendMessage = async () => {
+// use this for now
+export const sendMessage = async (data: {
+  message: string;
+  receiver_id: string;
+}) => {
   const response = await API.post("/lecturer/messages", {
-    body_original: "Hello",
-    receiver_id: "1",
+    body_original: data.message,
+    receiver_id: data.receiver_id,
+  });
+  return response.data;
+};
+export const sendStudentMessage = async (data: {
+  message: string;
+  receiver_id: string;
+}) => {
+  const response = await API.post("/student/messages", {
+    body_original: data.message,
+    receiver_id: data.receiver_id,
   });
   return response.data;
 };
@@ -35,5 +49,17 @@ export const sendMessage = async () => {
 
 export const getMessages = async (receiver_id: string) => {
   const response = await API.get(`/lecturer/messages/${receiver_id}`);
+  return response.data;
+};
+export const getStudentMessages = async (receiver_id: string) => {
+  const response = await API.get(`/student/messages/${receiver_id}`);
+  return response.data;
+};
+
+export const translate = async (data: {
+  message_id: string | number;
+  language: string;
+}) => {
+  const response = await API.post("/translates", data);
   return response.data;
 };
