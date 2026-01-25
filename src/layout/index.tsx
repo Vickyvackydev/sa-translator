@@ -207,7 +207,7 @@ const Message: React.FC<MessageProps> = ({
               </div>
             )}
             {!isUser && (
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   onClick={handleSpeak}
                   className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-700"
@@ -631,11 +631,25 @@ const TranslationApp: React.FC = () => {
     }
   }, [activeUser]);
 
-  // Request notification permission
+  // Request notification permission - improved for mobile/user gesture
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    const handleGesture = () => {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            console.log("✅ Notification permission granted via gesture");
+          }
+        });
+      }
+    };
+
+    window.addEventListener("click", handleGesture, { once: true });
+    window.addEventListener("touchstart", handleGesture, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("touchstart", handleGesture);
+    };
   }, []);
 
   useEffect(() => {
@@ -649,7 +663,7 @@ const TranslationApp: React.FC = () => {
 
     // Confirmed event name for new messages
     channel.listen(".message.sent", (notification: any) => {
-      // console.log("📩 Message event received:", notification);
+      console.log("📩 Message event received:", notification);
 
       if (Notification.permission === "granted") {
         const notif = new Notification(notification.title || "New Message", {
