@@ -104,7 +104,7 @@ export default function RegisterScreen() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="fullname"
+                  placeholder="Enter First and Last Name"
                 />
               </div>
             </div>
