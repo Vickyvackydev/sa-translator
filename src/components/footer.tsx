@@ -40,7 +40,7 @@ function Footer() {
       </div>
       <div className="flex items-center justify-center border-t border-[#FFFFFF] py-5">
         <span className="text-sm font-normal text-[#9B9B9B] text-center">
-          Copyright © 2025 Fend Technologies Limited, All Right Reserved.
+          Copyright © 2025 Thrilldigitals Global Technologies Limited, All Right Reserved.
         </span>
       </div>
     </div>
