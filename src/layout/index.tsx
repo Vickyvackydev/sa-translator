@@ -70,6 +70,7 @@ interface MessageProps {
   isUser: boolean;
   onTranslate?: (messageId: string | number, language: string) => Promise<void>;
   isTranslating?: boolean;
+  selectedVoice?: SpeechSynthesisVoice | null;
 }
 
 interface LanguageSelectorProps {
@@ -85,6 +86,7 @@ const Message: React.FC<MessageProps> = ({
   isUser,
   onTranslate,
   isTranslating,
+  selectedVoice,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -128,7 +130,12 @@ const Message: React.FC<MessageProps> = ({
     }
 
     const utterance = new SpeechSynthesisUtterance(message.text);
-    if (message.detectedLang) {
+
+    // If a specific voice is selected, use it
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    } else if (message.detectedLang) {
+      // Fallback to language detection if no voice selected
       utterance.lang = message.detectedLang.toLowerCase();
     }
 
@@ -273,86 +280,86 @@ const Message: React.FC<MessageProps> = ({
 };
 
 // Language Selector Component
-const LanguageSelector: React.FC<LanguageSelectorProps> = ({
-  sourceLanguage,
-  setSourceLanguage,
-  targetLanguage,
-  setTargetLanguage,
-}) => {
-  const languages: Language[] = [
-    { code: "", name: "Auto" },
-    { code: "en", name: "English" },
-    { code: "zu", name: "isiZulu" },
-    { code: "xh", name: "isiXhosa" },
-    { code: "af", name: "Afrikaans" },
-    { code: "st", name: "Sesotho" },
-    { code: "tn", name: "Setswana" },
-    { code: "ss", name: "Siswati" },
-    { code: "nr", name: "isiNdebele" },
-    { code: "ve", name: "Tshivenda" },
-    { code: "ts", name: "Xitsonga" },
-  ];
+// const LanguageSelector: React.FC<LanguageSelectorProps> = ({
+//   sourceLanguage,
+//   setSourceLanguage,
+//   targetLanguage,
+//   setTargetLanguage,
+// }) => {
+//   const languages: Language[] = [
+//     { code: "", name: "Auto" },
+//     { code: "en", name: "English" },
+//     { code: "zu", name: "isiZulu" },
+//     { code: "xh", name: "isiXhosa" },
+//     { code: "af", name: "Afrikaans" },
+//     { code: "st", name: "Sesotho" },
+//     { code: "tn", name: "Setswana" },
+//     { code: "ss", name: "Siswati" },
+//     { code: "nr", name: "isiNdebele" },
+//     { code: "ve", name: "Tshivenda" },
+//     { code: "ts", name: "Xitsonga" },
+//   ];
 
-  const swapLanguages = (): void => {
-    const temp = sourceLanguage;
-    setSourceLanguage(targetLanguage);
-    setTargetLanguage(temp);
-  };
+//   const swapLanguages = (): void => {
+//     const temp = sourceLanguage;
+//     setSourceLanguage(targetLanguage);
+//     setTargetLanguage(temp);
+//   };
 
-  return (
-    <div className="flex items-center gap-2 p-4 bg-white border-b border-gray-200">
-      <select
-        value={sourceLanguage}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-          setSourceLanguage(e.target.value)
-        }
-        className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {languages.map((lang: Language) => (
-          <option key={lang.code} value={lang.code}>
-            {lang.name}
-          </option>
-        ))}
-      </select>
+//   return (
+//     <div className="flex items-center gap-2 p-4 bg-white border-b border-gray-200">
+//       <select
+//         value={sourceLanguage}
+//         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+//           setSourceLanguage(e.target.value)
+//         }
+//         className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+//       >
+//         {languages.map((lang: Language) => (
+//           <option key={lang.code} value={lang.code}>
+//             {lang.name}
+//           </option>
+//         ))}
+//       </select>
 
-      <button
-        onClick={swapLanguages}
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        aria-label="Swap languages"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M7 4L3 8L7 12M13 8H3M13 16L17 12L13 8M7 12H17"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+//       <button
+//         onClick={swapLanguages}
+//         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+//         aria-label="Swap languages"
+//       >
+//         <svg
+//           width="20"
+//           height="20"
+//           viewBox="0 0 20 20"
+//           fill="none"
+//           xmlns="http://www.w3.org/2000/svg"
+//         >
+//           <path
+//             d="M7 4L3 8L7 12M13 8H3M13 16L17 12L13 8M7 12H17"
+//             stroke="currentColor"
+//             strokeWidth="2"
+//             strokeLinecap="round"
+//             strokeLinejoin="round"
+//           />
+//         </svg>
+//       </button>
 
-      <select
-        value={targetLanguage}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-          setTargetLanguage(e.target.value)
-        }
-        className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {languages.slice(1).map((lang: Language) => (
-          <option key={lang.code} value={lang.code}>
-            {lang.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+//       <select
+//         value={targetLanguage}
+//         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+//           setTargetLanguage(e.target.value)
+//         }
+//         className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+//       >
+//         {languages.slice(1).map((lang: Language) => (
+//           <option key={lang.code} value={lang.code}>
+//             {lang.name}
+//           </option>
+//         ))}
+//       </select>
+//     </div>
+//   );
+// };
 
 // Sidebar Component
 
@@ -383,6 +390,48 @@ const TranslationApp: React.FC = () => {
   const [usersPage, setUsersPage] = useState(1);
   const [hasMoreUsers, setHasMoreUsers] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  // Voice Settings State
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] =
+    useState<SpeechSynthesisVoice | null>(null);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      // Sort voices: South African first, then UK/US, then others
+      availableVoices.sort((a, b) => {
+        const priorityLangs = ["en-ZA", "zu-ZA", "af-ZA", "en-GB", "en-US"];
+        const aPriority = priorityLangs.indexOf(a.lang);
+        const bPriority = priorityLangs.indexOf(b.lang);
+
+        if (aPriority > -1 && bPriority > -1) return aPriority - bPriority;
+        if (aPriority > -1) return -1;
+        if (bPriority > -1) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      setVoices(availableVoices);
+
+      // Try to restore saved voice preference
+      const savedVoiceName = localStorage.getItem("preferredVoice");
+      if (savedVoiceName) {
+        const foundVoice = availableVoices.find(
+          (v) => v.name === savedVoiceName,
+        );
+        if (foundVoice) setSelectedVoice(foundVoice);
+      }
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  console.log("voices", voices);
 
   const activeUser = useSelector(selectUser);
 
@@ -426,7 +475,7 @@ const TranslationApp: React.FC = () => {
 
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<
-    "profile" | "password" | "sessions"
+    "profile" | "password" | "sessions" | "voice"
   >("profile");
   const [sessions, setSessions] = useState<any[]>([]);
   const [isSettingsLoading, setIsSettingsLoading] = useState<boolean>(false);
@@ -873,6 +922,17 @@ const TranslationApp: React.FC = () => {
                   <Computer size={18} />
                   Sessions
                 </button>
+                {/* <button
+                  onClick={() => setActiveSettingsTab("voice")}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeSettingsTab === "voice"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <Volume2 size={18} />
+                  Voice
+                </button> */}
               </div>
 
               {/* Modal Content */}
@@ -1118,6 +1178,101 @@ const TranslationApp: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {activeSettingsTab === "voice" && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">
+                        Voice Settings
+                      </h3>
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Reading Voice
+                          </label>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Choose the voice tone you prefer for reading
+                            messages aloud. Options depend on your browser and
+                            operating system.
+                          </p>
+
+                          <select
+                            value={selectedVoice?.name || ""}
+                            onChange={(e) => {
+                              const voice = voices.find(
+                                (v) => v.name === e.target.value,
+                              );
+                              setSelectedVoice(voice || null);
+                              if (voice) {
+                                localStorage.setItem(
+                                  "preferredVoice",
+                                  voice.name,
+                                );
+                                // Test the voice
+                                window.speechSynthesis.cancel();
+                                const utterance = new SpeechSynthesisUtterance(
+                                  "Hello, this is my voice.",
+                                );
+                                utterance.voice = voice;
+                                window.speechSynthesis.speak(utterance);
+                              } else {
+                                localStorage.removeItem("preferredVoice");
+                              }
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          >
+                            <option value="">
+                              Default (Auto-detect language)
+                            </option>
+                            {Object.entries(
+                              voices.reduce(
+                                (acc, voice) => {
+                                  const lang = voice.lang;
+                                  if (!acc[lang]) acc[lang] = [];
+                                  acc[lang].push(voice);
+                                  return acc;
+                                },
+                                {} as Record<string, SpeechSynthesisVoice[]>,
+                              ),
+                            ).map(([lang, langVoices]) => (
+                              <optgroup key={lang} label={lang}>
+                                {langVoices.map((voice) => (
+                                  <option key={voice.name} value={voice.name}>
+                                    {voice.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                          <h4 className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                            <Volume2 size={16} />
+                            About Voices
+                          </h4>
+                          <p className="text-xs text-blue-700 mb-2">
+                            Voices are provided by your browser and operating
+                            system.
+                          </p>
+                          <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                            <li>
+                              <strong>South African:</strong> Look for "en-ZA"
+                              or "English (South Africa)"
+                            </li>
+                            <li>
+                              <strong>US/UK:</strong> Look for "en-US" or
+                              "en-GB"
+                            </li>
+                            <li>
+                              <strong>Missing a voice?</strong> You may need to
+                              install the language pack in your device settings
+                              (Windows/Mac/Android/iOS).
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1229,12 +1384,12 @@ const TranslationApp: React.FC = () => {
               </div>
             ) : (
               <>
-                <LanguageSelector
+                {/* { <LanguageSelector
                   sourceLanguage={activeUser?.role === "student" ? "zu" : "en"}
                   setSourceLanguage={() => {}}
                   targetLanguage={activeUser?.role === "student" ? "en" : "zu"}
                   setTargetLanguage={() => {}}
-                />
+                />} */}
 
                 <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-4">
                   {isLoading ? (
@@ -1250,6 +1405,7 @@ const TranslationApp: React.FC = () => {
                           isUser={msg.isUser}
                           onTranslate={handleTranslate}
                           isTranslating={msg.realId === translatingMessageId}
+                          selectedVoice={selectedVoice}
                         />
                       ))}
                       <div ref={messagesEndRef} />
