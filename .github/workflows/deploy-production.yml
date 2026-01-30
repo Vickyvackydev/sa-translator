@@ -1,0 +1,80 @@
+name: Deploy To Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+
+      # 3. Inject .env for React build (multi-line safe)
+      - name: Create .env file from base64
+        run: |
+          echo "${{ secrets.PRODUCTION_DOT_ENV_B64 }}" | base64 -d > .env
+
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 5. Build React app
+      - name: Build React App
+        run: npm run build
+
+      # 7. Upload build folder to server
+      - name: Upload Build Folder to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "build"
+          target: "${{ secrets.SERVER_PRODUCTION_DEPLOY_PATH }}/temp-deploy"
+          strip_components: 1
+
+      # 8. Post-deployment commands on server
+      - name: Finalize Deployment on Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            BASE_DIR="${{ secrets.SERVER_PRODUCTION_DEPLOY_PATH }}"
+            LIVE_DIR="$BASE_DIR/build"
+            TEMP_DIR="$BASE_DIR/temp-deploy"
+            BACKUP_DIR="$BASE_DIR/last-build"
+
+            # Backup current build
+            if [ -d "$LIVE_DIR" ]; then
+              echo "Backing up current build to $BACKUP_DIR"
+              mkdir -p "$BACKUP_DIR"
+              mv "$LIVE_DIR"/* "$BACKUP_DIR"
+            fi
+
+            # Replace with new build
+            rm -rf "$LIVE_DIR"
+            mkdir -p "$LIVE_DIR"
+            mv "$TEMP_DIR"/* "$LIVE_DIR"
+
+            # Cleanup
+            rm -rf "$TEMP_DIR"
+
+            # Set permissions
+            chmod -R 755 "$LIVE_DIR"
+
+            echo "✅ Deployment complete"
