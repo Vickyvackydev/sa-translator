@@ -53,10 +53,10 @@ interface Message {
   translation?: string;
 }
 
-interface Language {
-  code: string;
-  name: string;
-}
+// interface Language {
+//   code: string;
+//   name: string;
+// }
 
 // interface ChatHistoryItem {
 //   id: string;
@@ -73,12 +73,12 @@ interface MessageProps {
   selectedVoice?: SpeechSynthesisVoice | null;
 }
 
-interface LanguageSelectorProps {
-  sourceLanguage: string;
-  setSourceLanguage: (lang: string) => void;
-  targetLanguage: string;
-  setTargetLanguage: (lang: string) => void;
-}
+// interface LanguageSelectorProps {
+//   sourceLanguage: string;
+//   setSourceLanguage: (lang: string) => void;
+//   targetLanguage: string;
+//   setTargetLanguage: (lang: string) => void;
+// }
 
 // Message Component
 const Message: React.FC<MessageProps> = ({
