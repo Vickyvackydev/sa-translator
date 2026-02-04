@@ -431,7 +431,7 @@ const TranslationApp: React.FC = () => {
     };
   }, []);
 
-  console.log("voices", voices);
+  // console.log("voices", voices);
 
   const activeUser = useSelector(selectUser);
 
@@ -1267,6 +1267,12 @@ const TranslationApp: React.FC = () => {
                               <strong>Missing a voice?</strong> You may need to
                               install the language pack in your device settings
                               (Windows/Mac/Android/iOS).
+                            </li>
+                            <li>
+                              <strong>Important Information:</strong> You may
+                              need to use edge when you have African languages
+                              installed in your local machine as not all
+                              browsers support them.
                             </li>
                           </ul>
                         </div>
