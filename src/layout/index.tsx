@@ -922,7 +922,7 @@ const TranslationApp: React.FC = () => {
                   <Computer size={18} />
                   Sessions
                 </button>
-                {/* <button
+                <button
                   onClick={() => setActiveSettingsTab("voice")}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     activeSettingsTab === "voice"
@@ -932,7 +932,7 @@ const TranslationApp: React.FC = () => {
                 >
                   <Volume2 size={18} />
                   Voice
-                </button> */}
+                </button>
               </div>
 
               {/* Modal Content */}
@@ -1419,11 +1419,7 @@ const TranslationApp: React.FC = () => {
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      placeholder={
-                        activeUser?.role === "student"
-                          ? "Type in isiZulu..."
-                          : "Type in English..."
-                      }
+                      placeholder={"Type here to send a message..."}
                       className="w-full p-4 pr-14 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none shadow-sm"
                       rows={1}
                     />
