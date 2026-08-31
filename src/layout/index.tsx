@@ -53,10 +53,10 @@ interface Message {
   translation?: string;
 }
 
-interface Language {
-  code: string;
-  name: string;
-}
+// interface Language {
+//   code: string;
+//   name: string;
+// }
 
 // interface ChatHistoryItem {
 //   id: string;
@@ -73,12 +73,12 @@ interface MessageProps {
   selectedVoice?: SpeechSynthesisVoice | null;
 }
 
-interface LanguageSelectorProps {
-  sourceLanguage: string;
-  setSourceLanguage: (lang: string) => void;
-  targetLanguage: string;
-  setTargetLanguage: (lang: string) => void;
-}
+// interface LanguageSelectorProps {
+//   sourceLanguage: string;
+//   setSourceLanguage: (lang: string) => void;
+//   targetLanguage: string;
+//   setTargetLanguage: (lang: string) => void;
+// }
 
 // Message Component
 const Message: React.FC<MessageProps> = ({
@@ -431,7 +431,7 @@ const TranslationApp: React.FC = () => {
     };
   }, []);
 
-  console.log("voices", voices);
+  // console.log("voices", voices);
 
   const activeUser = useSelector(selectUser);
 
@@ -922,7 +922,7 @@ const TranslationApp: React.FC = () => {
                   <Computer size={18} />
                   Sessions
                 </button>
-                {/* <button
+                <button
                   onClick={() => setActiveSettingsTab("voice")}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     activeSettingsTab === "voice"
@@ -932,7 +932,7 @@ const TranslationApp: React.FC = () => {
                 >
                   <Volume2 size={18} />
                   Voice
-                </button> */}
+                </button>
               </div>
 
               {/* Modal Content */}
@@ -1268,6 +1268,12 @@ const TranslationApp: React.FC = () => {
                               install the language pack in your device settings
                               (Windows/Mac/Android/iOS).
                             </li>
+                            <li>
+                              <strong>Important Information:</strong> You may
+                              need to use edge when you have African languages
+                              installed in your local machine as not all
+                              browsers support them.
+                            </li>
                           </ul>
                         </div>
                       </div>
@@ -1419,11 +1425,7 @@ const TranslationApp: React.FC = () => {
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      placeholder={
-                        activeUser?.role === "student"
-                          ? "Type in isiZulu..."
-                          : "Type in English..."
-                      }
+                      placeholder={"Type here to send a message..."}
                       className="w-full p-4 pr-14 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none shadow-sm"
                       rows={1}
                     />
